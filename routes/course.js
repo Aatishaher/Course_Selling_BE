@@ -1,15 +1,15 @@
-const {router}=require('express');
+const {Router}=require('express');
 
-const coursesrouter=router();
+const coursesrouter=Router();
 
 
-app.get("/courses/preview",function(req,res){
+coursesrouter.get("/preview",function(req,res){
     res.json({
         message:"hello"
     })    
 })
 
-app.post("/courses/purchase",function(req,res){
+coursesrouter.post("/purchase",function(req,res){
     res.json({
         message:"hello"
     })    
@@ -17,6 +17,4 @@ app.post("/courses/purchase",function(req,res){
 
 
 
-module.exports={
-    coursesrouter:coursesrouter
-};
+module.exports=coursesrouter;
