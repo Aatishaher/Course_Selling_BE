@@ -2,62 +2,66 @@ const { Router } = require("express");
 const adminRouter = Router();
 const { adminModel, courseModel } = require("../db");
 const jwt = require("jsonwebtoken");
-
-const  { JWT_ADMIN_PASSWORD } = require("../config");
+const bcrypt = require('bcrypt');
 const { adminMiddleware } = require("../middleware/admin");
+require('dotenv').config();
 
 
-adminRouter.post("/signup", async function(req, res) {
+adminRouter.post("/signup", async function (req, res) {
     const { email, password, firstName, lastName } = req.body;
-    await adminModel.create({
-        email: email,
-        password: password,
-        firstName: firstName, 
-        lastName: lastName
-    })
-    
-    res.json({
-        message: "Signup succeeded"
-    })
-})
-
-adminRouter.post("/signin", async function(req, res) {
-    const { email, password } = req.body;
-
-    
-    const admin = await adminModel.findOne({
-        email: email,
-        password: password
-    });
-
-    if (admin) {
-        const token = jwt.sign({
-            id: admin._id
-        }, JWT_ADMIN_PASSWORD);
-
-        
-
-        res.json({
-            token: token
+    try {
+        const hash = await bcrypt.hash(password, 10);
+        await adminModel.create({
+            email: email,
+            password: hash,
+            firstName: firstName,
+            lastName: lastName
         })
-    } else {
-        res.status(403).json({
-            message: "Incorrect credentials"
-        })
+        res.status(200).send("Sucess");
     }
+    catch(err){
+        res.status(500).send("error");
+        console.log(err);
+    }
+    
 })
 
-adminRouter.post("/course", adminMiddleware, async function(req, res) {
+adminRouter.post("/signin", async function (req, res) {
+    const { email, password } = req.body;
+  
+    try {
+      const admin = await adminModel.findOne({ email: email });
+      if (!admin) {
+        return res.status(404).send("User not found with the provided email");
+      }
+      const pass = await bcrypt.compare(password, admin.password);
+      if (!pass) {
+        return res.status(401).send("Incorrect password");
+      }
+      const token = jwt.sign({ id: admin._id }, process.env.JWT_ADMIN_PASSWORD, { expiresIn: '1h' });
+      return res.status(200).json({
+        token: token,
+        userinfo: admin
+      });
+  
+    } catch (err) {
+      console.error("Error occurred during signin:", err);
+      return res.status(500).send("Internal server error");
+    }
+  });
+  
+
+adminRouter.post("/course", adminMiddleware, async function (req, res) {
     const adminId = req.userId;
 
     const { title, description, imageUrl, price } = req.body;
 
-    
+
     const course = await courseModel.create({
-        title: title, 
-        description: description, 
-        imageUrl: imageUrl, 
-        price: price, 
+        title: title,
+        description: description,
+        imageUrl: imageUrl,
+        price: price,
         creatorId: adminId
     })
 
@@ -67,19 +71,19 @@ adminRouter.post("/course", adminMiddleware, async function(req, res) {
     })
 })
 
-adminRouter.put("/course", adminMiddleware, async function(req, res) {
+adminRouter.put("/course", adminMiddleware, async function (req, res) {
     const adminId = req.userId;
 
     const { title, description, imageUrl, price, courseId } = req.body;
 
-    
+
     const course = await courseModel.updateOne({
-        _id: courseId, 
-        creatorId: adminId 
+        _id: courseId,
+        creatorId: adminId
     }, {
-        title: title, 
-        description: description, 
-        imageUrl: imageUrl, 
+        title: title,
+        description: description,
+        imageUrl: imageUrl,
         price: price
     })
 
@@ -89,11 +93,11 @@ adminRouter.put("/course", adminMiddleware, async function(req, res) {
     })
 })
 
-adminRouter.get("/course/bulk", adminMiddleware,async function(req, res) {
+adminRouter.get("/course/bulk", adminMiddleware, async function (req, res) {
     const adminId = req.userId;
 
     const courses = await courseModel.find({
-        creatorId: adminId 
+        creatorId: adminId
     });
 
     res.json({
