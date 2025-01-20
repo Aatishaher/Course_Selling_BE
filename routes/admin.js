@@ -1,11 +1,11 @@
 const { Router } = require("express");
 const adminRouter = Router();
-const { adminModel, courseModel } = require("../db");
+const {adminModel,courseModel}=require("../db");
 const jwt = require("jsonwebtoken");
 const bcrypt = require('bcrypt');
 const { adminMiddleware } = require("../middleware/admin");
 require('dotenv').config();
-
+const mongoose=require("mongoose");
 
 adminRouter.post("/signup", async function (req, res) {
     const { email, password, firstName, lastName } = req.body;
@@ -28,7 +28,7 @@ adminRouter.post("/signup", async function (req, res) {
 
 adminRouter.post("/signin", async function (req, res) {
     const { email, password } = req.body;
-  
+
     try {
       const admin = await adminModel.findOne({ email: email });
       if (!admin) {
@@ -38,7 +38,7 @@ adminRouter.post("/signin", async function (req, res) {
       if (!pass) {
         return res.status(401).send("Incorrect password");
       }
-      const token = jwt.sign({ id: admin._id }, process.env.JWT_ADMIN_PASSWORD, { expiresIn: '1h' });
+      const token = jwt.sign({ id: admin._id }, process.env.JWT_ADMIN_PASSWORD);
       return res.status(200).json({
         token: token,
         userinfo: admin
@@ -51,18 +51,12 @@ adminRouter.post("/signin", async function (req, res) {
   });
   
 
-adminRouter.post("/course", adminMiddleware, async function (req, res) {
-    const adminId = req.userId;
-
-    const { title, description, imageUrl, price } = req.body;
-
-
+adminRouter.post("/course",adminMiddleware, async function (req, res) {
+    const { title, description, price } = req.body;
     const course = await courseModel.create({
         title: title,
         description: description,
-        imageUrl: imageUrl,
         price: price,
-        creatorId: adminId
     })
 
     res.json({
@@ -73,10 +67,7 @@ adminRouter.post("/course", adminMiddleware, async function (req, res) {
 
 adminRouter.put("/course", adminMiddleware, async function (req, res) {
     const adminId = req.userId;
-
     const { title, description, imageUrl, price, courseId } = req.body;
-
-
     const course = await courseModel.updateOne({
         _id: courseId,
         creatorId: adminId
